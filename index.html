@@ -787,11 +787,14 @@ function Step2({ recipe, onNext, onBack }) {
 /* ── STEP 3: PANTRY REVIEW ──────────────────────────────────── */
 function Step3({ recipe, onNext, onBack }) {
   const cartIds = new Set(recipe.cartItems.map(c => c.id));
-  const allItems = [
-    ...recipe.ingredients.filter(i => !cartIds.has(i.id)).map(i => ({ id: i.id, name: i.name })),
-    ...recipe.cartItems.map(c => ({ id: c.id, name: c.name })),
-  ];
-  const [checked, setChecked] = useState(new Set(recipe.pantryIds));
+  const stapleItems = recipe.ingredients
+    .filter(i => !cartIds.has(i.id))
+    .map(i => ({ id: i.id, name: i.name, isStaple: true }));
+  const heroItems = recipe.cartItems.map(c => ({ id: c.id, name: c.name, isStaple: false }));
+  const allItems = [...heroItems, ...stapleItems];
+
+  // Hero items ticked by default (need to order), staples unticked (already have)
+  const [checked, setChecked] = useState(new Set(heroItems.map(h => h.id)));
 
   function toggle(id) {
     setChecked(prev => {
@@ -801,14 +804,15 @@ function Step3({ recipe, onNext, onBack }) {
     });
   }
 
-  const needCount = allItems.filter(p => !checked.has(p.id)).length;
+  const orderCount = allItems.filter(p => checked.has(p.id)).length;
 
   return (
     <div className="container">
       <div className="card">
         <div className="back-link" onClick={onBack}>← Back</div>
 
-        <p className="pantry-q">What do you already have at home?</p>
+        <p className="pantry-q">What do you need to order?</p>
+        <p style={{fontSize:13,color:'#999',marginBottom:16,marginTop:-10}}>Uncheck anything you already have at home.</p>
 
         <div className="checkbox-list">
           {allItems.map(item => {
@@ -818,7 +822,12 @@ function Step3({ recipe, onNext, onBack }) {
                 <div className={`checkbox-box ${isChecked ? 'checked' : ''}`}>
                   {isChecked && <span className="checkmark">✓</span>}
                 </div>
-                <span className={`checkbox-label ${!isChecked ? 'striked' : ''}`}>{item.name}</span>
+                <span className={`checkbox-label ${!isChecked ? 'striked' : ''}`}>
+                  {item.name}
+                  {item.isStaple && !isChecked && (
+                    <span style={{fontSize:10,color:'#bbb',marginLeft:6,fontWeight:400}}>already at home</span>
+                  )}
+                </span>
               </div>
             );
           })}
@@ -826,11 +835,11 @@ function Step3({ recipe, onNext, onBack }) {
 
         <div className="pantry-summary">
           <div>
-            <div className="pantry-summary-label">Need to purchase</div>
-            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>Items not in your pantry</div>
+            <div className="pantry-summary-label">Items to order</div>
+            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>Uncheck items you already have</div>
           </div>
           <div style={{textAlign:'right'}}>
-            <div className="pantry-summary-count">{needCount}</div>
+            <div className="pantry-summary-count">{orderCount}</div>
             <div className="pantry-summary-unit">items</div>
           </div>
         </div>
