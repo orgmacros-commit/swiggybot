@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Swiggy AI Cooking Assistant</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fff;
+      color: #282C3F;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    .nav {
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: #FC8019;
+      letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: #282C3F; }
+    .nav-badge {
+      background: #FC8019;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: .4px;
+    }
+
+    /* STEP INDICATOR */
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0;
+      padding: 20px 16px 0;
+    }
+    .step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all .3s ease;
+      flex-shrink: 0;
+    }
+    .step-dot.done   { background: #FC8019; color: #fff; }
+    .step-dot.active { background: #FC8019; color: #fff; box-shadow: 0 0 0 4px rgba(252,128,25,.2); }
+    .step-dot.todo   { background: #f0f0f0; color: #999; }
+    .step-line {
+      width: 40px;
+      height: 2px;
+      background: #f0f0f0;
+      flex-shrink: 0;
+      transition: background .3s ease;
+    }
+    .step-line.done { background: #FC8019; }
+
+    /* CONTAINER */
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+    }
+
+    /* CARD */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 24px;
+      margin-top: 24px;
+      box-shadow: 0 4px 24px rgba(40,44,63,.08);
+      border: 1px solid #f5f5f5;
+      animation: fadeUp .35s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* HERO */
+    .hero-headline {
+      font-size: 26px;
+      font-weight: 800;
+      color: #282C3F;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .hero-headline em {
+      font-style: normal;
+      color: #FC8019;
+    }
+    .hero-sub {
+      font-size: 14px;
+      color: #686B78;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #f6f6f6;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 4px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #686B78;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .tab.active {
+      background: #fff;
+      color: #FC8019;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+
+    /* INPUT */
+    .input-wrap { position: relative; margin-bottom: 14px; }
+    .input-wrap input, .input-wrap textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #282C3F;
+      background: #fafafa;
+      outline: none;
+      transition: border-color .2s;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .input-wrap input:focus, .input-wrap textarea:focus { border-color: #FC8019; background: #fff; }
+    .input-wrap textarea { min-height: 100px; }
+
+    /* PRIMARY BUTTON */
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: #FC8019;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .2px;
+    }
+    .btn-primary:hover { background: #e8711a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(252,128,25,.35); }
+    .btn-primary:active { transform: translateY(0); }
+
+    /* LOADING */
+    .loading-wrap {
+      text-align: center;
+      padding: 32px 0;
+      animation: fadeUp .3s ease;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #f0f0f0;
+      border-top-color: #FC8019;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; color: #686B78; font-weight: 500; }
+    .loading-sub  { font-size: 12px; color: #999; margin-top: 4px; }
+
+    /* RECIPE CARD */
+    .recipe-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .recipe-icon {
+      width: 48px; height: 48px;
+      background: #FFF3E8;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .recipe-name { font-size: 18px; font-weight: 700; color: #282C3F; }
+    .recipe-source { font-size: 12px; color: #FC8019; font-weight: 500; margin-top: 2px; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #999;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    /* SERVINGS */
+    .servings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .servings-toggle {
+      display: flex;
+      gap: 6px;
+    }
+    .serving-btn {
+      width: 38px; height: 38px;
+      border: 1.5px solid #e8e8e8;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #686B78;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .serving-btn.active {
+      border-color: #FC8019;
+      background: #FFF3E8;
+      color: #FC8019;
+    }
+
+    /* INGREDIENT LIST */
+    .ingredient-list { list-style: none; margin-bottom: 20px; }
+    .ingredient-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f8f8f8;
+    }
+    .ingredient-item:last-child { border-bottom: none; }
+    .ingr-name { font-size: 14px; color: #282C3F; font-weight: 500; }
+    .ingr-qty  { font-size: 13px; color: #686B78; background: #f6f6f6; padding: 3px 9px; border-radius: 6px; font-weight: 500; }
+
+    /* PANTRY */
+    .pantry-q { font-size: 16px; font-weight: 700; color: #282C3F; margin-bottom: 16px; }
+    .checkbox-list { margin-bottom: 20px; }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid #f8f8f8;
+      cursor: pointer;
+      user-select: none;
+    }
+    .checkbox-item:last-child { border-bottom: none; }
+    .checkbox-box {
+      width: 22px; height: 22px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .checkbox-box.checked { border-color: #FC8019; background: #FC8019; }
+    .checkmark { color: #fff; font-size: 13px; font-weight: 700; line-height: 1; }
+    .checkbox-label { font-size: 14px; color: #282C3F; font-weight: 500; }
+    .checkbox-label.striked { text-decoration: line-through; color: #aaa; }
+
+    .pantry-summary {
+      background: #FFF3E8;
+      border: 1.5px solid #FFDBB5;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .pantry-summary-label { font-size: 13px; color: #686B78; }
+    .pantry-summary-count { font-size: 18px; font-weight: 800; color: #FC8019; }
+    .pantry-summary-unit  { font-size: 12px; color: #999; }
+
+    /* CART */
+    .cart-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid #f5f5f5;
+      animation: fadeUp .3s ease both;
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-img {
+      width: 52px; height: 52px;
+      border-radius: 10px;
+      background: #f6f6f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      flex-shrink: 0;
+    }
+    .cart-name { font-size: 14px; font-weight: 600; color: #282C3F; }
+    .cart-weight { font-size: 12px; color: #999; margin-top: 2px; }
+    .cart-price { margin-left: auto; font-size: 15px; font-weight: 700; color: #282C3F; flex-shrink: 0; }
+
+    .cart-divider {
+      border: none;
+      border-top: 1.5px dashed #e8e8e8;
+      margin: 4px 0 14px;
+    }
+    .cart-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .cart-total-label { font-size: 14px; font-weight: 600; color: #686B78; }
+    .cart-total-value { font-size: 20px; font-weight: 800; color: #282C3F; }
+
+    .btn-instamart {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #FC8019 0%, #f96b00 100%);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .3px;
+      box-shadow: 0 4px 16px rgba(252,128,25,.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-instamart:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(252,128,25,.5); }
+
+    /* SUCCESS */
+    .success-wrap { text-align: center; padding: 8px 0 4px; }
+    .success-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #FC8019, #f96b00);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 20px;
+      box-shadow: 0 8px 24px rgba(252,128,25,.35);
+      animation: pop .4s cubic-bezier(.175,.885,.32,1.275) both;
+    }
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .success-headline { font-size: 22px; font-weight: 800; color: #282C3F; margin-bottom: 8px; }
+    .success-sub { font-size: 13px; color: #686B78; margin-bottom: 24px; line-height: 1.5; }
+
+    .success-steps {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .success-step {
+      background: #FFF3E8;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #FC8019;
+    }
+    .success-arrow { color: #FC8019; font-size: 14px; font-weight: 700; }
+
+    .btn-open {
+      width: 100%;
+      padding: 15px;
+      background: #FC8019;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 12px;
+    }
+    .btn-open:hover { background: #e8711a; transform: translateY(-1px); }
+    .btn-restart {
+      width: 100%;
+      padding: 13px;
+      background: transparent;
+      color: #686B78;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-restart:hover { border-color: #FC8019; color: #FC8019; }
+
+    /* FUTURE CAPABILITIES */
+    .future-section {
+      max-width: 480px;
+      margin: 32px auto 0;
+      padding: 0 16px 48px;
+    }
+    .future-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #999;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .future-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .future-chip {
+      background: #f6f6f6;
+      border: 1px solid #ebebeb;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #686B78;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .future-chip-icon { font-size: 15px; }
+
+    /* BACK LINK */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #686B78;
+      cursor: pointer;
+      margin-bottom: 20px;
+      padding: 6px 0;
+      user-select: none;
+      transition: color .15s;
+    }
+    .back-link:hover { color: #FC8019; }
+
+    @media (max-width: 400px) {
+      .hero-headline { font-size: 22px; }
+      .card { padding: 22px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+/* ── MOCK RECIPE DATASETS ────────────────────────────────────── */
+const RECIPES = [
+  {
+    id: 'thai_green_curry',
+    url: 'https://www.youtube.com/watch?v=xieenWcXdpg',
+    name: 'Veg Thai Green Curry',
+    emoji: '🍲',
+    tag: 'Popular · Thai',
+    servingsBase: 2,
+    ingredients: [
+      { id: 'coconut',   name: 'Coconut Milk',      qty: 400, unit: 'ml'  },
+      { id: 'zucchini',  name: 'Zucchini',          qty: 1,   unit: 'pcs' },
+      { id: 'babycorn',  name: 'Baby Corn',         qty: 100, unit: 'g'   },
+      { id: 'bellpepper',name: 'Bell Pepper',       qty: 1,   unit: 'pcs' },
+      { id: 'galangal',  name: 'Galangal',          qty: 1,   unit: 'inch'},
+      { id: 'lemongrass',name: 'Lemongrass',        qty: 2,   unit: 'stalks'},
+      { id: 'kaffir',    name: 'Kaffir Lime Leaves',qty: 6,   unit: 'leaves'},
+      { id: 'greenchilli',name:'Green Chillies',    qty: 4,   unit: 'pcs' },
+      { id: 'basil',     name: 'Thai Basil',        qty: 1,   unit: 'handful'},
+    ],
+    pantryIds: ['salt','olive_oil'],
+    cartItems: [
+      { id: 'coconut',    name: 'Coconut Milk',       weight: '400ml', price: 85,  emoji: '🥥' },
+      { id: 'zucchini',   name: 'Zucchini',           weight: '250g',  price: 45,  emoji: '🥒' },
+      { id: 'babycorn',   name: 'Baby Corn',          weight: '200g',  price: 55,  emoji: '🌽' },
+      { id: 'bellpepper', name: 'Bell Pepper',        weight: '2 pcs', price: 60,  emoji: '🫑' },
+      { id: 'lemongrass', name: 'Lemongrass + Galangal Kit', weight: '100g', price: 70, emoji: '🌿' },
+      { id: 'kaffir',     name: 'Kaffir Lime Leaves', weight: '20g',   price: 40,  emoji: '🍃' },
+    ],
+  },
+  {
+    id: 'pasta',
+    url: 'https://youtube.com/watch?v=pasta-recipe',
+    name: 'Creamy Garlic Pasta',
+    emoji: '🍝',
+    tag: 'Easy · Italian',
+    servingsBase: 2,
+    ingredients: [
+      { id: 'pasta',    name: 'Pasta',       qty: 250, unit: 'g'      },
+      { id: 'garlic',   name: 'Garlic',      qty: 6,   unit: 'cloves' },
+      { id: 'cream',    name: 'Fresh Cream', qty: 200, unit: 'ml'     },
+      { id: 'butter',   name: 'Butter',      qty: 40,  unit: 'g'      },
+      { id: 'parmesan', name: 'Parmesan',    qty: 100, unit: 'g'      },
+    ],
+    pantryIds: ['salt','pepper','olive_oil','butter'],
+    cartItems: [
+      { id: 'garlic',   name: 'Fresh Garlic',    weight: '100g',  price: 35,  emoji: '🧄' },
+      { id: 'cream',    name: 'Fresh Cream',     weight: '200ml', price: 65,  emoji: '🥛' },
+      { id: 'pasta',    name: 'Pasta',           weight: '500g',  price: 75,  emoji: '🍝' },
+      { id: 'parmesan', name: 'Parmesan Cheese', weight: '100g',  price: 180, emoji: '🧀' },
+    ],
+  },
+  {
+    id: 'dal_tadka',
+    url: 'https://www.youtube.com/watch?v=dal-tadka-recipe',
+    name: 'Dal Tadka',
+    emoji: '🫕',
+    tag: 'Comfort · Indian',
+    servingsBase: 4,
+    ingredients: [
+      { id: 'dal',      name: 'Yellow Dal',   qty: 200, unit: 'g'   },
+      { id: 'onion',    name: 'Onion',        qty: 2,   unit: 'pcs' },
+      { id: 'tomato',   name: 'Tomatoes',     qty: 2,   unit: 'pcs' },
+      { id: 'garlic',   name: 'Garlic',       qty: 4,   unit: 'cloves'},
+      { id: 'cumin',    name: 'Cumin Seeds',  qty: 1,   unit: 'tsp' },
+      { id: 'ghee',     name: 'Ghee',         qty: 2,   unit: 'tbsp'},
+    ],
+    pantryIds: ['salt','cumin','ghee'],
+    cartItems: [
+      { id: 'dal',    name: 'Yellow Dal (Toor)', weight: '500g',  price: 85,  emoji: '🫘' },
+      { id: 'onion',  name: 'Fresh Onions',      weight: '500g',  price: 30,  emoji: '🧅' },
+      { id: 'tomato', name: 'Fresh Tomatoes',    weight: '500g',  price: 40,  emoji: '🍅' },
+      { id: 'garlic', name: 'Fresh Garlic',      weight: '100g',  price: 35,  emoji: '🧄' },
+    ],
+  },
+  {
+    id: 'avocado_toast',
+    url: 'https://www.youtube.com/watch?v=avocado-toast-recipe',
+    name: 'Avocado Toast',
+    emoji: '🥑',
+    tag: 'Quick · Healthy',
+    servingsBase: 2,
+    ingredients: [
+      { id: 'avocado',  name: 'Avocado',        qty: 2,   unit: 'pcs' },
+      { id: 'bread',    name: 'Sourdough Bread', qty: 4,   unit: 'slices'},
+      { id: 'egg',      name: 'Eggs',            qty: 2,   unit: 'pcs' },
+      { id: 'lemon',    name: 'Lemon',           qty: 1,   unit: 'pcs' },
+      { id: 'chilli',   name: 'Chilli Flakes',   qty: 1,   unit: 'tsp' },
+    ],
+    pantryIds: ['salt','pepper','olive_oil','chilli'],
+    cartItems: [
+      { id: 'avocado', name: 'Ripe Avocados',    weight: '2 pcs', price: 120, emoji: '🥑' },
+      { id: 'bread',   name: 'Sourdough Bread',  weight: '400g',  price: 85,  emoji: '🍞' },
+      { id: 'egg',     name: 'Farm Eggs',        weight: '6 pcs', price: 75,  emoji: '🥚' },
+      { id: 'lemon',   name: 'Fresh Lemon',      weight: '2 pcs', price: 20,  emoji: '🍋' },
+    ],
+  },
+  {
+    id: 'choco_lava',
+    url: 'https://www.youtube.com/watch?v=chocolate-lava-cake',
+    name: 'Chocolate Lava Cake',
+    emoji: '🍫',
+    tag: 'Dessert · Indulgent',
+    servingsBase: 4,
+    ingredients: [
+      { id: 'choco',   name: 'Dark Chocolate', qty: 200, unit: 'g'   },
+      { id: 'butter',  name: 'Butter',         qty: 100, unit: 'g'   },
+      { id: 'egg',     name: 'Eggs',           qty: 4,   unit: 'pcs' },
+      { id: 'sugar',   name: 'Sugar',          qty: 80,  unit: 'g'   },
+      { id: 'flour',   name: 'Flour',          qty: 40,  unit: 'g'   },
+    ],
+    pantryIds: ['butter','sugar','flour'],
+    cartItems: [
+      { id: 'choco',  name: 'Dark Chocolate',  weight: '200g',  price: 160, emoji: '🍫' },
+      { id: 'egg',    name: 'Farm Eggs',        weight: '6 pcs', price: 75,  emoji: '🥚' },
+      { id: 'cream',  name: 'Whipping Cream',  weight: '200ml', price: 90,  emoji: '🥛' },
+    ],
+  },
+];
+
+function matchRecipe(url) {
+  const match = RECIPES.find(r => r.url === url.trim());
+  return match || RECIPES[0];
+}
+
+/* ── STEP INDICATOR ─────────────────────────────────────────── */
+function StepIndicator({ step }) {
+  const steps = [1, 2, 3, 4];
+  return (
+    <div className="step-indicator">
+      {steps.map((s, i) => (
+        <React.Fragment key={s}>
+          <div className={`step-dot ${s < step ? 'done' : s === step ? 'active' : 'todo'}`}>
+            {s < step ? '✓' : s}
+          </div>
+          {i < steps.length - 1 && (
+            <div className={`step-line ${s < step ? 'done' : ''}`} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ── STEP 1: HERO INPUT ─────────────────────────────────────── */
+function Step1({ onNext }) {
+  const [tab, setTab] = useState(1);
+  const [value, setValue] = useState('https://www.youtube.com/watch?v=xieenWcXdpg');
+  const [loading, setLoading] = useState(false);
+
+  const tabs = ['Recipe URL', 'YouTube URL', 'Paste Recipe'];
+  const placeholders = [
+    'https://example.com/creamy-garlic-pasta',
+    'https://www.youtube.com/watch?v=…',
+    'Paste your full recipe text here…',
+  ];
+
+  function handleGenerate() {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onNext(value); }, 1800);
+  }
+
+  if (loading) return (
+    <div className="container">
+      <div className="card">
+        <div className="loading-wrap">
+          <div className="spinner" />
+          <div className="loading-text">Analyzing recipe…</div>
+          <div className="loading-sub">Extracting ingredients &amp; quantities</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="container">
+      <div className="card">
+        <h1 className="hero-headline">What do you want to<br /><em>cook today?</em></h1>
+        <p className="hero-sub">Turn recipes and meal ideas into Instamart-ready grocery carts.</p>
+
+        <div className="tabs">
+          {tabs.map((t, i) => (
+            <button key={i} className={`tab ${tab === i ? 'active' : ''}`}
+              onClick={() => { setTab(i); setValue(''); }}>
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <div className="input-wrap">
+          {tab === 2
+            ? <textarea placeholder={placeholders[tab]} value={value}
+                onChange={e => setValue(e.target.value)} />
+            : <input type="url" placeholder={placeholders[tab]} value={value}
+                onChange={e => setValue(e.target.value)} />
+          }
+        </div>
+
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#bbb',letterSpacing:'.6px',textTransform:'uppercase',marginBottom:8}}>Try an example</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+            {RECIPES.map(r => (
+              <button key={r.id}
+                onClick={() => { setTab(1); setValue(r.url); }}
+                style={{
+                  display:'flex', alignItems:'center', gap:5,
+                  padding:'5px 11px', borderRadius:20,
+                  border: value === r.url ? '1.5px solid #FC8019' : '1.5px solid #e8e8e8',
+                  background: value === r.url ? '#FFF3E8' : '#fafafa',
+                  color: value === r.url ? '#FC8019' : '#686B78',
+                  fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s',
+                  fontFamily:'inherit',
+                }}>
+                <span>{r.emoji}</span>{r.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={handleGenerate}>
+          ✨ Generate Cart
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── STEP 2: RECIPE + INGREDIENTS ───────────────────────────── */
+function Step2({ recipe, onNext, onBack }) {
+  const [servings, setServings] = useState(recipe.servingsBase);
+
+  function scale(qty) {
+    const ratio = servings / recipe.servingsBase;
+    const val = qty * ratio;
+    return Number.isInteger(val) ? val : val.toFixed(1);
+  }
+
+  return (
+    <div className="container">
+      <div className="card">
+        <div className="back-link" onClick={onBack}>← Back</div>
+
+        <div className="recipe-meta">
+          <div className="recipe-icon">{recipe.emoji}</div>
+          <div>
+            <div className="recipe-name">{recipe.name}</div>
+            <div className="recipe-source">✓ Recipe detected from YouTube</div>
+          </div>
+        </div>
+
+        <div className="servings-row">
+          <div><div className="section-label">Servings</div></div>
+          <div className="servings-toggle">
+            {[1, 2, 4].map(s => (
+              <button key={s} className={`serving-btn ${servings === s ? 'active' : ''}`}
+                onClick={() => setServings(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="section-label">Ingredients</div>
+        <ul className="ingredient-list">
+          {recipe.ingredients.map(ing => (
+            <li key={ing.id} className="ingredient-item">
+              <span className="ingr-name">{ing.name}</span>
+              <span className="ingr-qty">{scale(ing.qty)} {ing.unit}</span>
+            </li>
+          ))}
+        </ul>
+
+        <button className="btn-primary" onClick={onNext}>Continue →</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── STEP 3: PANTRY REVIEW ──────────────────────────────────── */
+function Step3({ recipe, onNext, onBack }) {
+  const cartIds = new Set(recipe.cartItems.map(c => c.id));
+  const allItems = [
+    ...recipe.ingredients.filter(i => !cartIds.has(i.id)).map(i => ({ id: i.id, name: i.name })),
+    ...recipe.cartItems.map(c => ({ id: c.id, name: c.name })),
+  ];
+  const [checked, setChecked] = useState(new Set(recipe.pantryIds));
+
+  function toggle(id) {
+    setChecked(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const needCount = allItems.filter(p => !checked.has(p.id)).length;
+
+  return (
+    <div className="container">
+      <div className="card">
+        <div className="back-link" onClick={onBack}>← Back</div>
+
+        <p className="pantry-q">What do you already have at home?</p>
+
+        <div className="checkbox-list">
+          {allItems.map(item => {
+            const isChecked = checked.has(item.id);
+            return (
+              <div key={item.id} className="checkbox-item" onClick={() => toggle(item.id)}>
+                <div className={`checkbox-box ${isChecked ? 'checked' : ''}`}>
+                  {isChecked && <span className="checkmark">✓</span>}
+                </div>
+                <span className={`checkbox-label ${!isChecked ? 'striked' : ''}`}>{item.name}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="pantry-summary">
+          <div>
+            <div className="pantry-summary-label">Need to purchase</div>
+            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>Items not in your pantry</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div className="pantry-summary-count">{needCount}</div>
+            <div className="pantry-summary-unit">items</div>
+          </div>
+        </div>
+
+        <button className="btn-primary" onClick={onNext}>
+          🛒 Generate Instamart Cart
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── STEP 4: INSTAMART CART ─────────────────────────────────── */
+function Step4({ recipe, onNext, onBack }) {
+  const total = recipe.cartItems.reduce((s, p) => s + p.price, 0);
+  const [adding, setAdding] = useState(false);
+
+  function handleAdd() {
+    setAdding(true);
+    setTimeout(() => { setAdding(false); onNext(); }, 1400);
+  }
+
+  if (adding) return (
+    <div className="container">
+      <div className="card">
+        <div className="loading-wrap">
+          <div className="spinner" />
+          <div className="loading-text">Adding to Instamart…</div>
+          <div className="loading-sub">Connecting with Instamart catalogue</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="container">
+      <div className="card">
+        <div className="back-link" onClick={onBack}>← Back</div>
+
+        <div className="section-label" style={{marginBottom:4}}>Instamart Cart</div>
+        <div style={{fontSize:12,color:'#999',marginBottom:16}}>{recipe.cartItems.length} items · Ready to order</div>
+
+        {recipe.cartItems.map((p, i) => (
+          <div key={p.id} className="cart-item" style={{animationDelay: `${i * 60}ms`}}>
+            <div className="cart-img">{p.emoji}</div>
+            <div>
+              <div className="cart-name">{p.name}</div>
+              <div className="cart-weight">{p.weight}</div>
+            </div>
+            <div className="cart-price">₹{p.price}</div>
+          </div>
+        ))}
+
+        <hr className="cart-divider" />
+
+        <div className="cart-total-row">
+          <span className="cart-total-label">Cart Total</span>
+          <span className="cart-total-value">₹{total}</span>
+        </div>
+
+        <button className="btn-instamart" onClick={handleAdd}>
+          <span>🛒</span>
+          <span>Add To Instamart Cart</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── STEP 5: SUCCESS ────────────────────────────────────────── */
+function Step5({ recipe, onRestart }) {
+  const total = recipe.cartItems.reduce((s, p) => s + p.price, 0);
+  return (
+    <div className="container">
+      <div className="card">
+        <div className="success-wrap">
+          <div className="success-icon">🎉</div>
+          <h2 className="success-headline">Your Instamart Cart Is Ready</h2>
+          <p className="success-sub">Recipe → Ingredients → Cart in under a minute.</p>
+
+          <div className="success-steps">
+            <div className="success-step">Recipe</div>
+            <span className="success-arrow">→</span>
+            <div className="success-step">Ingredients</div>
+            <span className="success-arrow">→</span>
+            <div className="success-step">Cart</div>
+          </div>
+
+          <div style={{background:'#f9f9f9',borderRadius:10,padding:'14px 16px',marginBottom:24,textAlign:'left'}}>
+            <div style={{fontSize:12,color:'#999',marginBottom:8}}>ORDER SUMMARY · {recipe.emoji} {recipe.name}</div>
+            {recipe.cartItems.map(p => (
+              <div key={p.id} style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#282C3F',padding:'4px 0'}}>
+                <span>{p.emoji} {p.name}</span>
+                <span style={{fontWeight:600}}>₹{p.price}</span>
+              </div>
+            ))}
+            <div style={{borderTop:'1px solid #ebebeb',marginTop:10,paddingTop:10,display:'flex',justifyContent:'space-between',fontWeight:700}}>
+              <span>Total</span>
+              <span style={{color:'#FC8019'}}>₹{total}</span>
+            </div>
+          </div>
+
+          <button className="btn-open">Open Instamart ↗</button>
+          <button className="btn-restart" onClick={onRestart}>↺ Start a New Recipe</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── FUTURE CAPABILITIES ────────────────────────────────────── */
+function FutureCapabilities() {
+  const items = [
+    { icon: '🎯', label: 'Goal → Meal → Cart' },
+    { icon: '🥘', label: 'Cook With What I Have' },
+    { icon: '📅', label: 'AI Meal Planning' },
+  ];
+  return (
+    <div className="future-section">
+      <div className="future-title">Future Capabilities</div>
+      <div className="future-chips">
+        {items.map((item, i) => (
+          <div key={i} className="future-chip">
+            <span className="future-chip-icon">{item.icon}</span>
+            {item.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ROOT APP ───────────────────────────────────────────────── */
+function App() {
+  const [step, setStep] = useState(1);
+  const [recipe, setRecipe] = useState(RECIPES[0]);
+
+  function handleNext(url) {
+    if (url) setRecipe(matchRecipe(url));
+    setStep(s => s + 1);
+  }
+
+  const back    = () => setStep(s => s - 1);
+  const restart = () => setStep(1);
+
+  return (
+    <>
+      <nav className="nav">
+        <div className="nav-logo">
+          swiggy <span>AI</span>
+          <div className="nav-badge">BETA</div>
+        </div>
+        <div style={{fontSize:12,color:'#999',fontWeight:500}}>Cooking Assistant</div>
+      </nav>
+
+      {step < 5 && <StepIndicator step={step} />}
+
+      {step === 1 && <Step1 onNext={handleNext} />}
+      {step === 2 && <Step2 recipe={recipe} onNext={() => setStep(3)} onBack={back} />}
+      {step === 3 && <Step3 recipe={recipe} onNext={() => setStep(4)} onBack={back} />}
+      {step === 4 && <Step4 recipe={recipe} onNext={() => setStep(5)} onBack={back} />}
+      {step === 5 && <Step5 recipe={recipe} onRestart={restart} />}
+
+      <FutureCapabilities />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
